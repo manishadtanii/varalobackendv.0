@@ -14,7 +14,6 @@ import contactRouter from './src/routers/contactRouter.js';
 import adminUsersRouter from './src/routers/adminUsersRouter.js';
 const port = process.env.PORT || 3000;
 
-// CORS Configuration (FIXED)
 const allowedOrigins = [
   'http://localhost:5173',
   'http://127.0.0.1:5173',
@@ -24,8 +23,7 @@ const allowedOrigins = [
 app.use(
   cors({
     origin: function (origin, callback) {
-      // Allow requests with no origin (like Postman)
-      if (!origin) return callback(null, true);
+      if (!origin) return callback(null, true); // Postman etc.
 
       if (allowedOrigins.includes(origin)) {
         return callback(null, true);
@@ -38,9 +36,6 @@ app.use(
     allowedHeaders: ['Content-Type', 'Authorization'],
   })
 );
-
-// IMPORTANT: handle preflight
-app.options('*', cors());
 
 
 
