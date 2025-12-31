@@ -542,6 +542,7 @@ export const verifyPasswordChangeOTP = async (req, res) => {
     );
 
     // Clear OTP from DB
+    user.verified = true; 
     user.verificationCode = undefined;
     user.verificationCodeValidation = undefined;
     user.otpAttempts = 0;
@@ -640,12 +641,13 @@ export const resendPasswordChangeOTP = async (req, res) => {
     }
 
     // Update cookies expiry (10 min from now)
-    res.cookie('otpEmail', email, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
-      maxAge: 10 * 60 * 1000, // 10 minutes
-    });
+   res.cookie('otpEmail', email, {
+  httpOnly: true,
+  secure: true,        // prod me always true
+  sameSite: 'none',    // 🔥 VERY IMPORTANT
+  maxAge: 10 * 60 * 1000,
+});
+
 
     res.cookie('otpPurpose', 'change-password', {
       httpOnly: true,
