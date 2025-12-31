@@ -50,7 +50,12 @@ MONGODB_URI=your_mongodb_connection
 JWT_SECRET=your_strong_secret_key
 EMAIL_USER=your_gmail@gmail.com
 EMAIL_PASS=your_app_password
+# Recommended (use SendGrid in production to avoid SMTP port blocks)
+SENDGRID_API_KEY=
+SENDGRID_FROM=you@yourdomain.com
 ```
+
+> Note: In cloud hosts like Render, SMTP ports are sometimes blocked. We recommend using SendGrid (or Mailgun/Postmark) via API keys for reliable email sending. Set `SENDGRID_API_KEY` and `SENDGRID_FROM` for SendGrid integration. If SendGrid is not configured, the server falls back to Nodemailer and will log the OTP to the server console if email sending fails.
 
 ### Step 2: Setup Gmail App Password
 1. Go to: https://myaccount.google.com/apppasswords
