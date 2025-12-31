@@ -1,5 +1,4 @@
 import nodemailer from "nodemailer";
-import sgMail from "@sendgrid/mail";
 
 // Helper to format OTP email body
 const otpHtml = (otp) => `
@@ -12,16 +11,40 @@ const otpHtml = (otp) => `
   </div>
 `;
 
+const SENDGRID_API_KEY = process.env.SENDGRID_API_KEY;
+const SENDGRID_FROM = process.env.SENDGRID_FROM;
 let useSendGrid = false;
-if (process.env.SENDGRID_API_KEY && process.env.SENDGRID_FROM) {
-  try {
-    sgMail.setApiKey(process.env.SENDGRID_API_KEY);
-    useSendGrid = true;
-    console.log('SendGrid configured');
-  } catch (err) {
-    console.error('Failed to configure SendGrid:', err);
-  }
+if (SENDGRID_API_KEY && SENDGRID_FROM) {
+  useSendGrid = true;
+  console.log('SendGrid configured (using direct API)');
 }
+
+// SendGrid via Fetch (no additional package required)
+const sendViaSendGrid = async (email, otp) => {
+  if (!SENDGRID_API_KEY || !SENDGRID_FROM) throw new Error('SendGrid not configured');
+
+  const body = {
+    personalizations: [{ to: [{ email }], subject: 'Your OTP Code - Admin Login' }],
+    from: { email: SENDGRID_FROM },
+    content: [{ type: 'text/html', value: otpHtml(otp) }],
+  };
+
+  const res = await fetch('https://api.sendgrid.com/v3/mail/send', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${SENDGRID_API_KEY}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(body),
+  });
+
+  if (!res.ok) {
+    const errText = await res.text();
+    throw new Error(`SendGrid API error ${res.status}: ${errText}`);
+  }
+
+  return { success: true };
+};
 
 // Nodemailer transporter (fallback)
 const transporter = nodemailer.createTransport({
@@ -43,18 +66,12 @@ export const sendOTPEmail = async (email, otp) => {
   console.log('sendOTPEmail called for', email, 'useSendGrid:', useSendGrid);
 
   if (useSendGrid) {
-    const msg = {
-      to: email,
-      from: process.env.SENDGRID_FROM,
-      subject: 'Your OTP Code - Admin Login',
-      html: otpHtml(otp),
-    };
     try {
-      await sgMail.send(msg);
-      console.log('SendGrid: email sent to', email);
+      await sendViaSendGrid(email, otp);
+      console.log('SendGrid (API): email sent to', email);
       return { success: true };
     } catch (error) {
-      console.error('SendGrid send error:', error);
+      console.error('SendGrid (API) send error:', error);
       // Fall through to nodemailer fallback
     }
   }
