@@ -6,10 +6,20 @@ const transporter = nodemailer.createTransport({
     user: process.env.EMAIL_USER,
     pass: process.env.EMAIL_PASS,
   },
+  // Timeouts to avoid long hanging
+  connectionTimeout: 10000,
+  greetingTimeout: 5000,
+  socketTimeout: 10000,
 });
+
+// Verify transporter at startup to catch auth/connect issues early
+transporter.verify()
+  .then(() => console.log('Mail transporter verified and ready'))
+  .catch(err => console.error('Mail transporter verification failed:', err));
 
 export const sendOTPEmail = async (email, otp) => {
   try {
+    console.log('sendOTPEmail called for', email);
     await transporter.sendMail({
       from: `"Admin Panel" <${process.env.EMAIL_USER}>`,
       to: email,
@@ -24,6 +34,7 @@ export const sendOTPEmail = async (email, otp) => {
         </div>
       `,
     });
+    console.log('sendMail success for', email);
     return { success: true };
   } catch (error) {
     console.error("Email Error:", error);

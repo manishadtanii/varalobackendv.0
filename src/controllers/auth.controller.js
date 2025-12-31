@@ -9,6 +9,7 @@ import { sendOTPEmail } from "../utils/emailService.js";
 export const requestOTP = async (req, res) => {
   try {
     const { email } = req.body;
+    console.log('requestOTP called for', email);
 
     // Validate input
     if (!email) {
@@ -18,7 +19,9 @@ export const requestOTP = async (req, res) => {
     }
 
     // Check if user exists and is admin
+    console.log('Finding user for email:', email);
     const user = await User.findOne({ email }).select("+otpAttempts");
+    console.log('User lookup result:', !!user);
 
     if (!user) {
       return res.status(404).json({
@@ -43,7 +46,9 @@ export const requestOTP = async (req, res) => {
 
     // Send OTP via email
     try {
+      console.log('About to send OTP email to', email);
       await sendOTPEmail(email, otp);
+      console.log('sendOTPEmail finished for', email);
     } catch (emailError) {
       console.error("Failed to send OTP email:", emailError);
       return res.status(500).json({
