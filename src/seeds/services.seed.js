@@ -4,13 +4,14 @@ import dotenv from "dotenv";
 import Page from "../models/pageModel.js";
 import Section from "../models/sectionModel.js";
 
-dotenv.config();
+dotenv.config();       
 
 // Sections data for each service
 const getServiceSectionsData = () => {
 
-    
+
     return {
+
         "tvg-management": {
             hero: {
                 name: "TVG Management",
@@ -73,6 +74,7 @@ const getServiceSectionsData = () => {
                     }
                 ]
             },
+
         },
 
         "tvg-stream": {
@@ -82,7 +84,7 @@ const getServiceSectionsData = () => {
                 para: "In today's fast-evolving legal landscape, advanced technology is no longer optional. It's indispensable. TVG Stream helps meet reporting firms with comprehensive remote support, offering secure platforms, real-time technical assistance, and flawless execution. Each small-point deposition matters, whether it's a routine deposition or a high-stakes trial. With our rentals, we support your firm in consistently delivering an exceptional client experience.",
                 cta: {
                     label: "Schedule a call now",
-                   
+
                 },
                 images: ["https://res.cloudinary.com/dh3dys6sf/image/upload/v1766744548/1_gtkec3.png", "https://res.cloudinary.com/dh3dys6sf/image/upload/v1766744551/2_qytmtr.png", "https://res.cloudinary.com/dh3dys6sf/image/upload/v1766744555/3_h0bsgp.png", "https://res.cloudinary.com/dh3dys6sf/image/upload/v1766744558/4_xqd0lh.png"],
             },
@@ -97,7 +99,7 @@ const getServiceSectionsData = () => {
                 title: "What We Provide",
                 para: "We are your remote deposition and trial presentation experts. We manage the tech so your proceedings run smoothly, securely, and professionally.",
                 tagsLeft: [
-                    {  text: "Session-Sharing & Audio Testing" },
+                    { text: "Session-Sharing & Audio Testing" },
                     { text: "Session Recording & Storage" },
                     { text: "Trial Technician" },
                     { text: "Hot-Seat Operation" },
@@ -162,7 +164,7 @@ const getServiceSectionsData = () => {
                 para: "Your business depends on more than exceptional service. It depends on strong financial health. Without transparent financial insights, even thriving agencies can face cash flow issues, compliance concerns, or inefficient planning. That's why precise bookkeeping isn't optional. It's critical. At TVG Books, we recognize the unique financial pressures you encounter: balancing reporter payroll, managing client invoicing, tracking vendor relationships, and compliance, or simply seeking better control over your finances, our team is here to make it easier. We offer specialized bookkeeping services tailored specifically for court reporting firms. With professional expertise and TVG Books, you can operate with confidence, clarity, and control.",
                 cta: {
                     label: "Schedule a call now",
-                
+
                 },
                 images: ["https://res.cloudinary.com/dh3dys6sf/image/upload/v1766744592/1_iw2thv.png", "https://res.cloudinary.com/dh3dys6sf/image/upload/v1766744596/2_zt7tqc.png", "https://res.cloudinary.com/dh3dys6sf/image/upload/v1766744601/3_rxsqc1.png", "https://res.cloudinary.com/dh3dys6sf/image/upload/v1766744603/4_o9osb8.png"],
             },
@@ -178,7 +180,7 @@ const getServiceSectionsData = () => {
                 title: "What We Provide",
                 para: "We make your invoices effortless. With organized bookkeeping, timely reporting, and tax-ready numbers, you're always audit-ready.",
                 tagsLeft: [
-                    {  text: "Invoicing & Collections" },
+                    { text: "Invoicing & Collections" },
                     { text: "Budget Tracking & Cost Analysis" },
                     { text: "Expense Categorization & Management" },
                     { text: "Vendor Payments & Account Updates" },
@@ -229,7 +231,7 @@ const getServiceSectionsData = () => {
                 para: "Professional organizations and trade associations thrive on connection, coordination, and clear leadership. But managing all the moving parts can be overwhelming. From day-to-day operations to annual conferences, it takes more than passion to keep members engaged and everything running smoothly. That's where TVG Connect steps in. We specialize in association management services designed specifically for the court reporting industry, offering customized solutions that keep your organization efficient, professional, and people-focused. Whether you're a growing association or a well-established group looking for scalable support, our experienced team brings structure, strategy, and heart to every detail.",
                 cta: {
                     label: "Schedule a call now",
-                
+
                 },
                 images: ["https://res.cloudinary.com/dh3dys6sf/image/upload/v1766744631/1_icxey6.png", "https://res.cloudinary.com/dh3dys6sf/image/upload/v1766744635/2_jgonvs.png", "https://res.cloudinary.com/dh3dys6sf/image/upload/v1766744638/3_cz8rr0.png", "https://res.cloudinary.com/dh3dys6sf/image/upload/v1766744642/4_chlfpl.png"],
             },
@@ -244,7 +246,7 @@ const getServiceSectionsData = () => {
                 title: "What We Provide",
                 para: "Our team helps associations streamline operations, strengthen member engagement, and plan annual conferences, all while providing the flexibility to grow as their needs evolve.",
                 tagsLeft: [
-                    {text: "Press Release & Media Kit Creation" },
+                    { text: "Press Release & Media Kit Creation" },
                     { text: "Reputation Management & Testimonials" },
                     { text: "Messaging & Positioning Strategy" },
                     { text: "Analytics & Engagement Tracking" },
@@ -422,11 +424,6 @@ const getServiceSectionsData = () => {
 };
 
 
-
-
-
-
-
 const seedServices = async () => {
     try {
         await mongoose.connect(process.env.MONGODB_URI);
@@ -580,8 +577,8 @@ const seedServices = async () => {
                         name: "Ray Catuogno, Jr.",
                         company: "Real Time Court Reporting",
                         text: "I don't get an opportunity to say it often enough, but I really appreciate the effort and hard work that everyone puts into making my business operations run smoothly. My work to establish the business was done long ago, and now it's everyone else's work that continues to make the business a success. So thanks for the big things that are a pain to do, and thanks for the little things that don't get as much notice but are just as important."
-                    }
-                ]
+                    },
+                ],
             };
 
             await Section.findOneAndUpdate(
@@ -604,10 +601,32 @@ const seedServices = async () => {
         const servicesTestimonials = {
             heading: "What Our Clients Say",
             cards: [
-                { name: "Pam Owen", company: "BOSS Reporters", text: "I am so appreciative of what you have taught me and for all of your efforts..." },
-                { name: "Michael Lewis", company: "Discovery Legal Services", text: "Working with The Varallo Group and Cedar Bushong has been an excellent experience..." },
-                { name: "Mary Beth Johnson", company: "Community College of Allegheny County", text: "May I begin by thanking you for a lifetime of work on behalf of Steno reporting..." }
-            ]
+                {
+                    name: "Pam Owen",
+                    company: "BOSS Reporters",
+                    text: "I am so appreciative of what you have taught me and for all of your efforts. I am very pleased with the progress we've made together and grateful for your positivity and eagerness to get all the ducks in a row. I am optimistic and very excited about the future, and know I am lucky to have found you."
+                },
+                {
+                    name: "Mary Beth Johnson",
+                    company: "Community College of Allegheny County",
+                    text: "May I begin by thanking you for a lifetime of work on behalf of Steno reporting. Your brilliance in creating A to Z and Basic Training saved our profession. As a result of your initiative, we now teach students from Oregon to Atlanta. You had vision, and I am grateful for your foresight."
+                },
+                {
+                    name: "Michael Lewis",
+                    company: "Discovery Legal Services",
+                    text: "Working with The Varallo Group and Cedar Bushong has been an excellent experience. Their team handled our website development with precision, creating a site that truly reflects our brand and meets our needs. Beyond the initial development, their ongoing support has been invaluable. They are consistently responsive and supportive, addressing any issues promptly and helping us adapt our site as our business evolves. We couldn't be happier with their dedication and commitment to our success. Highly recommend!"
+                },
+                {
+                    name: "Michael Scire",
+                    company: "Florida Court Reporters Association",
+                    text: "Such a great experience working with The Varallo Group. I cannot say enough wonderful things about each of you. You are all professional, helpful, efficient, and respectful. You all jumped right in and often offered help when I didn't realize I needed it. The conference ran seamlessly. Thank you from the bottom of my heart."
+                },
+                {
+                    name: "Ray Catuogno, Jr.",
+                    company: "Real Time Court Reporting",
+                    text: "I don't get an opportunity to say it often enough, but I really appreciate the effort and hard work that everyone puts into making my business operations run smoothly. My work to establish the business was done long ago, and now it's everyone else's work that continues to make the business a success. So thanks for the big things that are a pain to do, and thanks for the little things that don't get as much notice but are just as important."
+                },
+            ],
         };
 
         await Section.findOneAndUpdate(
@@ -760,6 +779,7 @@ const seedServices = async () => {
         process.exit(1);
     }
 };
+
 
 seedServices();
 

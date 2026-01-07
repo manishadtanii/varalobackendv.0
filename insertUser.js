@@ -9,10 +9,10 @@ const insertUser = async () => {
   try {
     await mongoose.connect(process.env.MONGODB_URI);
 
-    const hashedPassword = await bcrypt.hash("123456", 10);
+    const hashedPassword = await bcrypt.hash("jitender@1234", 10);
 
     const user = await User.create({
-      email: "manish@digicots.com",
+      email: "jitender@digicots.com",
       password: hashedPassword,
       role: "admin",
       verified: true,

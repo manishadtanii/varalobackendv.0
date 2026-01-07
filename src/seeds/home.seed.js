@@ -49,7 +49,7 @@ const seedHome = async () => {
                     "Your trusted partner for court reporting, legal video, association management, and administrative support services.",
                 button: {
                     label: "Learn more",
-                   
+
                 },
                 image: {
                     url: "https://res.cloudinary.com/dh3dys6sf/image/upload/v1766654121/hero_kxs1h1_mjadza.png",
@@ -314,7 +314,7 @@ const seedHome = async () => {
         console.log("✅ Testimonials Section Created");
 
 
-       
+
 
         process.exit(0);
     } catch (error) {

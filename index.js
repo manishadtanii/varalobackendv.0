@@ -17,7 +17,8 @@ const port = process.env.PORT || 3000;
 const allowedOrigins = [
   'http://localhost:5173',
   'http://127.0.0.1:5173',
-  'https://varallocms.vercel.app'
+  'https://varallocms.vercel.app',
+  'https://frontendcmsv1.vercel.app',
 ];
 
 app.use(
