@@ -1,6 +1,7 @@
 import { uploadToCloudinary, deleteFromCloudinary } from '../utils/cloudinaryUpload.js';
 import Page from '../models/pageModel.js';
 import Section from '../models/sectionModel.js';
+import cloudinary from 'cloudinary';
 
 /**
  * Upload image and get CDN URL
@@ -231,6 +232,66 @@ export const deleteImage = async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Delete failed',
+      error: error.message,
+    });
+  }
+};
+
+/**
+ * Get all images from Cloudinary organized by folder
+ * GET /api/upload/media/library
+ */
+export const getMediaLibrary = async (req, res) => {
+  try {
+    console.log('📚 Fetching media library from Cloudinary...');
+
+    // Fetch all resources from varallo-images folder
+    const result = await cloudinary.v2.api.resources({
+      type: 'upload',
+      prefix: 'varallo-images',
+      max_results: 500,
+    });
+
+    // Organize images by folder
+    const organizedByFolder = {};
+    
+    result.resources.forEach((resource) => {
+      const folder = resource.folder || 'uncategorized';
+      if (!organizedByFolder[folder]) {
+        organizedByFolder[folder] = [];
+      }
+      organizedByFolder[folder].push({
+        id: resource.public_id,
+        url: resource.secure_url,
+        publicId: resource.public_id,
+        folder: resource.folder,
+        width: resource.width,
+        height: resource.height,
+        uploadedAt: resource.created_at,
+        format: resource.format,
+      });
+    });
+
+    res.json({
+      success: true,
+      totalImages: result.resources.length,
+      folders: organizedByFolder,
+      allResources: result.resources.map(r => ({
+        id: r.public_id,
+        url: r.secure_url,
+        publicId: r.public_id,
+        folder: r.folder,
+        width: r.width,
+        height: r.height,
+        uploadedAt: r.created_at,
+        format: r.format,
+      })),
+    });
+  } catch (error) {
+    console.error('❌ Media Library Error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch media library',
       error: error.message,
     });
   }

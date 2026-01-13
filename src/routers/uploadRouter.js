@@ -5,6 +5,7 @@ import {
   uploadSectionImage,
   uploadMultipleImages,
   deleteImage,
+  getMediaLibrary,
 } from '../controllers/uploadController.js';
 
 const router = express.Router();
@@ -66,5 +67,11 @@ router.post('/multiple', upload.array('images', 10), uploadMultipleImages);
  * Delete image from Cloudinary
  */
 router.delete('/:publicId', deleteImage);
+
+/**
+ * GET /api/upload/media/library
+ * Get all images from Cloudinary organized by folder
+ */
+router.get('/media/library', getMediaLibrary);
 
 export default router;
