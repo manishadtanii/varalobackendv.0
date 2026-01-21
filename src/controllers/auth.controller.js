@@ -44,18 +44,16 @@ export const requestOTP = async (req, res) => {
     user.otpAttempts = 0; // Reset attempts on new OTP request
     await user.save();
 
-    // Send OTP via email (AWAITED - so we catch errors before responding)
-    console.log('About to send OTP email to', email);
-    try {
-      const result = await sendOTPEmail(email, otp);
-      console.log('✅ OTP email sent successfully for', email);
-    } catch (emailError) {
-      console.error('❌ Failed to send OTP email:', emailError.message);
-      return res.status(500).json({
-        message: "Failed to send OTP email. Please check your email configuration.",
-        error: emailError.message,
-      });
-    }
+    // Send OTP via email (async - don't block response, just log errors)
+    console.log('📧 Sending OTP email to', email);
+    (async () => {
+      try {
+        await sendOTPEmail(email, otp);
+        console.log('✅ OTP email sent successfully for', email);
+      } catch (emailError) {
+        console.error('❌ CRITICAL: Failed to send OTP email to', email, ':', emailError.message);
+      }
+    })(); // IIFE to send async
 
     // Set cookie with email (10 min expiry, HttpOnly)
     res.cookie('otpEmail', email, {

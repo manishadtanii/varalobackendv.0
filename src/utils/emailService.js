@@ -54,11 +54,15 @@ const sendViaGmail = async (email, otp) => {
     };
 
     console.log("📧 Attempting to send OTP to:", email);
+    const startTime = Date.now();
     const result = await transporter.sendMail(mailOptions);
-    console.log("✅ OTP email sent successfully. Response ID:", result.response);
+    const duration = Date.now() - startTime;
+    console.log(`✅ OTP email sent successfully in ${duration}ms. Response ID:`, result.response);
     return result;
   } catch (error) {
     console.error("❌ Error sending OTP email:", error.message);
+    console.error("   Error code:", error.code);
+    console.error("   Full error:", error);
     throw error;
   }
 };
