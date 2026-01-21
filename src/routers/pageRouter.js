@@ -28,7 +28,7 @@ const upload = multer({
 router.get("/admin/pages-status", getAllPagesStatus);
 
 // Toggle page visibility - ADMIN ONLY
-router.patch("/admin/toggle/:slug", verifyToken, togglePageVisibility);
+router.patch("/admin/toggle/:slug", togglePageVisibility);
 
 // Update section content with optional image upload - ADMIN ONLY
 router.patch(
