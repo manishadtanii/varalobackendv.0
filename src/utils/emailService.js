@@ -55,7 +55,14 @@ const sendViaGmail = async (email, otp) => {
 
     console.log("📧 Attempting to send OTP to:", email);
     const startTime = Date.now();
-    const result = await transporter.sendMail(mailOptions);
+    
+    // Add timeout to prevent hanging
+    const sendMailPromise = transporter.sendMail(mailOptions);
+    const timeoutPromise = new Promise((_, reject) => 
+      setTimeout(() => reject(new Error('Email send timeout after 10 seconds')), 10000)
+    );
+    
+    const result = await Promise.race([sendMailPromise, timeoutPromise]);
     const duration = Date.now() - startTime;
     console.log(`✅ OTP email sent successfully in ${duration}ms. Response ID:`, result.response);
     return result;
