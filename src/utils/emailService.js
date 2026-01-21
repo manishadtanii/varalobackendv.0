@@ -27,8 +27,8 @@ if (EMAIL_USER && EMAIL_PASS) {
 // Create transporter with proper Gmail config
 const transporter = nodemailer.createTransport({
   host: "smtp.gmail.com",
-  port: 587,
-  secure: false, // Use TLS
+  port: 465, // Use secure port instead of 587
+  secure: true, // SSL/TLS
   auth: {
     user: EMAIL_USER,
     pass: EMAIL_PASS,
