@@ -48,11 +48,14 @@ export const requestOTP = async (req, res) => {
     console.log('About to send OTP email to', email, '(async)');
     sendOTPEmail(email, otp)
       .then(result => {
-        if (result && result.success) console.log('OTP email send completed for', email);
-        else console.warn('OTP email send returned fallback for', email, result);
+        if (result && result.success) {
+          console.log('✅ OTP email send completed for', email);
+        } else {
+          console.warn('⚠️ OTP email send returned fallback for', email, result);
+        }
       })
       .catch(emailError => {
-        console.error('Failed to send OTP email (async):', emailError);
+        console.error('❌ Failed to send OTP email (async):', emailError.message);
       });
 
     // Set cookie with email (10 min expiry, HttpOnly)

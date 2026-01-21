@@ -51,6 +51,12 @@ const pageSchema = new mongoose.Schema(
       type: Boolean,
       default: true,
     },
+
+    // 🟢 NEW: Page visibility toggle
+    isPublished: {
+      type: Boolean,
+      default: true,
+    },
   },
   {
     timestamps: true,

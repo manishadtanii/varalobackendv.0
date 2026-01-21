@@ -1,5 +1,7 @@
-const SENDGRID_API_KEY = process.env.SENDGRID_API_KEY;
-const SENDGRID_FROM = process.env.SENDGRID_FROM;
+import nodemailer from "nodemailer";
+
+const EMAIL_USER = process.env.EMAIL_USER;
+const EMAIL_PASS = process.env.EMAIL_PASS;
 
 // Helper to format OTP email body
 const otpHtml = (otp) => `
@@ -16,42 +18,59 @@ const otpHtml = (otp) => `
   </div>
 `;
 
-if (SENDGRID_API_KEY && SENDGRID_FROM) {
-  console.log("SendGrid configured");
+if (EMAIL_USER && EMAIL_PASS) {
+  console.log("✅ Gmail configured with user:", EMAIL_USER);
 } else {
-  console.error("❌ SendGrid NOT configured properly");
+  console.error("❌ Gmail NOT configured properly - EMAIL_USER:", EMAIL_USER, "EMAIL_PASS exists:", !!EMAIL_PASS);
 }
 
-const sendViaSendGrid = async (email, otp) => {
-  const body = {
-    personalizations: [
-      { to: [{ email }], subject: "Your OTP Code - Admin Login" },
-    ],
-    from: { email: SENDGRID_FROM },
-    content: [{ type: "text/html", value: otpHtml(otp) }],
-  };
+// Create transporter with proper Gmail config
+const transporter = nodemailer.createTransport({
+  host: "smtp.gmail.com",
+  port: 587,
+  secure: false, // Use TLS
+  auth: {
+    user: EMAIL_USER,
+    pass: EMAIL_PASS,
+  },
+});
 
-  const res = await fetch("https://api.sendgrid.com/v3/mail/send", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${SENDGRID_API_KEY}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(body),
-  });
+// Verify transporter connection
+transporter.verify((error, success) => {
+  if (error) {
+    console.error("❌ Nodemailer transporter error:", error);
+  } else {
+    console.log("✅ Nodemailer transporter ready");
+  }
+});
 
-  if (!res.ok) {
-    const errText = await res.text();
-    throw new Error(`SendGrid API error ${res.status}: ${errText}`);
+const sendViaGmail = async (email, otp) => {
+  try {
+    const mailOptions = {
+      from: EMAIL_USER,
+      to: email,
+      subject: "Your OTP Code - Admin Login",
+      html: otpHtml(otp),
+    };
+
+    console.log("📧 Attempting to send OTP to:", email);
+    const result = await transporter.sendMail(mailOptions);
+    console.log("✅ OTP email sent successfully. Response ID:", result.response);
+    return result;
+  } catch (error) {
+    console.error("❌ Error sending OTP email:", error.message);
+    throw error;
   }
 };
 
 export const sendOTPEmail = async (email, otp) => {
-  if (!SENDGRID_API_KEY || !SENDGRID_FROM) {
-    throw new Error("SendGrid env vars missing");
+  if (!EMAIL_USER || !EMAIL_PASS) {
+    const error = "Gmail env vars missing - EMAIL_USER: " + EMAIL_USER + ", EMAIL_PASS exists: " + !!EMAIL_PASS;
+    console.error("❌", error);
+    throw new Error(error);
   }
 
-  await sendViaSendGrid(email, otp);
-  console.log("✅ OTP email sent to", email);
-  return { success: true };
+  const result = await sendViaGmail(email, otp);
+  console.log("✅ OTP email function completed for", email);
+  return { success: true, response: result.response };
 };

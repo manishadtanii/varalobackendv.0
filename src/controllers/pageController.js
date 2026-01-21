@@ -306,7 +306,15 @@ export const getPageBySlug = async (req, res) => {
 // Get all pages
 export const getAllPages = async (req, res) => {
   try {
-    const pages = await Page.find({ isActive: true }).lean();
+    // Fetch all active pages including isPublished field
+    const pages = await Page.find({ isActive: true }, {
+      slug: 1,
+      title: 1,
+      route: 1,
+      isPublished: 1,
+      parentSlug: 1,
+      order: 1,
+    }).lean();
 
     return res.status(200).json({
       message: "Pages fetched successfully",
@@ -314,6 +322,70 @@ export const getAllPages = async (req, res) => {
     });
   } catch (error) {
     console.error("Get All Pages Error:", error);
+    return res.status(500).json({
+      message: "Server error",
+    });
+  }
+};
+
+// 🟢 NEW: Toggle page visibility (isPublished)
+export const togglePageVisibility = async (req, res) => {
+  try {
+    const { slug } = req.params;
+
+    if (!slug) {
+      return res.status(400).json({
+        message: "Page slug is required",
+      });
+    }
+
+    // Find page
+    const page = await Page.findOne({ slug });
+    if (!page) {
+      return res.status(404).json({
+        message: "Page not found",
+      });
+    }
+
+    // Toggle isPublished
+    page.isPublished = !page.isPublished;
+    await page.save();
+
+    console.log(`✅ Toggled page visibility: ${slug} → ${page.isPublished ? "Published" : "Unpublished"}`);
+
+    return res.status(200).json({
+      message: `Page ${page.isPublished ? "published" : "unpublished"} successfully`,
+      data: {
+        slug: page.slug,
+        title: page.title,
+        isPublished: page.isPublished,
+      },
+    });
+  } catch (error) {
+    console.error("Toggle Page Visibility Error:", error);
+    return res.status(500).json({
+      message: "Server error",
+    });
+  }
+};
+
+// 🟢 NEW: Get all pages with visibility status (for CMS)
+export const getAllPagesStatus = async (req, res) => {
+  try {
+    const pages = await Page.find({}, {
+      slug: 1,
+      title: 1,
+      route: 1,
+      isPublished: 1,
+      parentSlug: 1,
+    }).sort({ order: 1 });
+
+    return res.status(200).json({
+      message: "Pages status fetched successfully",
+      data: pages,
+    });
+  } catch (error) {
+    console.error("Get Pages Status Error:", error);
     return res.status(500).json({
       message: "Server error",
     });
