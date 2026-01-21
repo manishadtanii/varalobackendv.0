@@ -25,7 +25,7 @@ const upload = multer({
 
 // 🟢 ADMIN ROUTES - Must be FIRST to avoid conflicts with dynamic routes
 // Get all pages with visibility status - ADMIN ONLY
-router.get("/admin/pages-status", verifyToken, getAllPagesStatus);
+router.get("/admin/pages-status", getAllPagesStatus);
 
 // Toggle page visibility - ADMIN ONLY
 router.patch("/admin/toggle/:slug", verifyToken, togglePageVisibility);
