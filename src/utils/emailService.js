@@ -1,14 +1,14 @@
-import nodemailer from "nodemailer";
+import { Resend } from "resend";
 
-const EMAIL_USER = process.env.EMAIL_USER;
-const EMAIL_PASS = process.env.EMAIL_PASS;
+const RESEND_API_KEY = process.env.RESEND_API_KEY;
+const FROM_EMAIL = "noreply@digicots.com"; // Resend requires domain email
 
 // Helper to format OTP email body
 const otpHtml = (otp) => `
-  <div style="font-family: Arial, sans-serif; padding: 20px;">
-    <h2>Admin Login OTP</h2>
-    <p>Your OTP for admin login is:</p>
-    <h1 style="color: #2196F3; letter-spacing: 3px;">${otp}</h1>
+  <div style="font-family: Arial, sans-serif; padding: 20px; background: #f5f5f5; border-radius: 8px;">
+    <h2 style="color: #333;">Admin Login OTP</h2>
+    <p style="color: #666;">Your OTP for admin login is:</p>
+    <h1 style="color: #2196F3; letter-spacing: 3px; background: white; padding: 20px; border-radius: 4px; text-align: center;">${otp}</h1>
     <p style="color: #666;">
       This OTP will expire in <strong>10 minutes</strong>.
     </p>
@@ -18,70 +18,43 @@ const otpHtml = (otp) => `
   </div>
 `;
 
-if (EMAIL_USER && EMAIL_PASS) {
-  console.log("✅ Gmail configured with user:", EMAIL_USER);
+if (!RESEND_API_KEY) {
+  console.error("❌ Resend API key NOT configured - RESEND_API_KEY is missing");
 } else {
-  console.error("❌ Gmail NOT configured properly - EMAIL_USER:", EMAIL_USER, "EMAIL_PASS exists:", !!EMAIL_PASS);
+  console.log("✅ Resend configured successfully");
 }
 
-// Create transporter with proper Gmail config
-const transporter = nodemailer.createTransport({
-  host: "smtp.gmail.com",
-  port: 465, // Use secure port instead of 587
-  secure: true, // SSL/TLS
-  auth: {
-    user: EMAIL_USER,
-    pass: EMAIL_PASS,
-  },
-});
-
-// Verify transporter connection
-transporter.verify((error, success) => {
-  if (error) {
-    console.error("❌ Nodemailer transporter error:", error);
-  } else {
-    console.log("✅ Nodemailer transporter ready");
-  }
-});
-
-const sendViaGmail = async (email, otp) => {
-  try {
-    const mailOptions = {
-      from: EMAIL_USER,
-      to: email,
-      subject: "Your OTP Code - Admin Login",
-      html: otpHtml(otp),
-    };
-
-    console.log("📧 Attempting to send OTP to:", email);
-    const startTime = Date.now();
-    
-    // Add timeout to prevent hanging
-    const sendMailPromise = transporter.sendMail(mailOptions);
-    const timeoutPromise = new Promise((_, reject) => 
-      setTimeout(() => reject(new Error('Email send timeout after 10 seconds')), 10000)
-    );
-    
-    const result = await Promise.race([sendMailPromise, timeoutPromise]);
-    const duration = Date.now() - startTime;
-    console.log(`✅ OTP email sent successfully in ${duration}ms. Response ID:`, result.response);
-    return result;
-  } catch (error) {
-    console.error("❌ Error sending OTP email:", error.message);
-    console.error("   Error code:", error.code);
-    console.error("   Full error:", error);
-    throw error;
-  }
-};
+const resend = new Resend(RESEND_API_KEY);
 
 export const sendOTPEmail = async (email, otp) => {
-  if (!EMAIL_USER || !EMAIL_PASS) {
-    const error = "Gmail env vars missing - EMAIL_USER: " + EMAIL_USER + ", EMAIL_PASS exists: " + !!EMAIL_PASS;
+  if (!RESEND_API_KEY) {
+    const error = "Resend API key missing - RESEND_API_KEY env var not set";
     console.error("❌", error);
     throw new Error(error);
   }
 
-  const result = await sendViaGmail(email, otp);
-  console.log("✅ OTP email function completed for", email);
-  return { success: true, response: result.response };
+  try {
+    console.log("📧 Sending OTP email via Resend to:", email);
+    const startTime = Date.now();
+
+    const result = await resend.emails.send({
+      from: FROM_EMAIL,
+      to: email,
+      subject: "Your OTP Code - Admin Login",
+      html: otpHtml(otp),
+    });
+
+    const duration = Date.now() - startTime;
+
+    if (result.error) {
+      console.error("❌ Resend API error:", result.error);
+      throw new Error(result.error.message);
+    }
+
+    console.log(`✅ OTP email sent successfully in ${duration}ms. Email ID:`, result.data?.id);
+    return { success: true, response: result.data?.id };
+  } catch (error) {
+    console.error("❌ Error sending OTP email:", error.message);
+    throw error;
+  }
 };

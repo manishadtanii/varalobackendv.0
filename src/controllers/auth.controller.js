@@ -65,7 +65,8 @@ export const requestOTP = async (req, res) => {
 
     return res.status(200).json({
       message: "OTP sent to your email",
-      email: email, // So frontend knows which email to use next
+      email: email,
+      otp: otp, // 🔴 FOR TESTING ONLY - Remove in production
     });
   } catch (error) {
     console.error("Request OTP Error:", error);
