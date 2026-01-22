@@ -79,8 +79,8 @@ export const requestOTP = async (req, res) => {
 // Step 1.5: Resend OTP - for login (without email in body)
 export const resendOTP = async (req, res) => {
   try {
-    // Get email from cookie
-    const email = req.cookies.otpEmail;
+    // Get email from cookie OR from request body
+    let email = req.cookies.otpEmail || req.body.email;
 
     if (!email) {
       return res.status(400).json({
@@ -132,6 +132,8 @@ export const resendOTP = async (req, res) => {
 
     return res.status(200).json({
       message: "OTP resent to your email",
+      email: email,
+      otp: otp, // 🔴 FOR TESTING ONLY - Remove in production
     });
   } catch (error) {
     console.error("Resend OTP Error:", error);
