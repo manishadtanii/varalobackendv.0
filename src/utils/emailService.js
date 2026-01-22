@@ -20,15 +20,17 @@ const otpHtml = (otp) => `
 
 if (!RESEND_API_KEY) {
   console.error("❌ Resend API key NOT configured - RESEND_API_KEY is missing");
+  console.log("⚠️  Email service will fail until RESEND_API_KEY is added to environment variables");
 } else {
   console.log("✅ Resend configured successfully");
 }
 
-const resend = new Resend(RESEND_API_KEY);
+// Only initialize Resend if API key exists
+const resend = RESEND_API_KEY ? new Resend(RESEND_API_KEY) : null;
 
 export const sendOTPEmail = async (email, otp) => {
-  if (!RESEND_API_KEY) {
-    const error = "Resend API key missing - RESEND_API_KEY env var not set";
+  if (!RESEND_API_KEY || !resend) {
+    const error = "Resend API key missing - RESEND_API_KEY env var not set. Please add it to environment variables.";
     console.error("❌", error);
     throw new Error(error);
   }
