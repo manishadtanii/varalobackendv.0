@@ -63,6 +63,7 @@ export const requestOTP = async (req, res) => {
       maxAge: 10 * 60 * 1000, // 10 minutes
     });
 
+    console.log('📤 Sending response with OTP:', otp);
     return res.status(200).json({
       message: "OTP sent to your email",
       email: email,
