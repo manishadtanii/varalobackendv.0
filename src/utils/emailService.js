@@ -1,7 +1,6 @@
-import nodemailer from "nodemailer";
+import sgMail from "@sendgrid/mail";
 
-const GMAIL_USER = process.env.GMAIL_USER;
-const GMAIL_PASS = process.env.GMAIL_PASS;
+const SENDGRID_API_KEY = process.env.SENDGRID_API_KEY;
 const FROM_EMAIL = process.env.FROM_EMAIL || "noreply@digicots.com";
 
 // Helper to format OTP email body
@@ -19,45 +18,37 @@ const otpHtml = (otp) => `
   </div>
 `;
 
-if (!GMAIL_USER || !GMAIL_PASS) {
-  console.error("❌ Gmail credentials NOT configured - GMAIL_USER and GMAIL_PASS are missing");
-  console.log("⚠️  Email service will fail until Gmail credentials are added to environment variables");
+if (!SENDGRID_API_KEY) {
+  console.error("❌ SendGrid API key NOT configured - SENDGRID_API_KEY is missing");
+  console.log("⚠️  Email service will fail until SENDGRID_API_KEY is added to environment variables");
 } else {
-  console.log("✅ Gmail configured successfully");
+  sgMail.setApiKey(SENDGRID_API_KEY);
+  console.log("✅ SendGrid configured successfully");
 }
 
-// Create transporter
-const transporter = nodemailer.createTransport({
-  service: 'gmail',
-  auth: {
-    user: GMAIL_USER,
-    pass: GMAIL_PASS
-  }
-});
-
 export const sendOTPEmail = async (email, otp) => {
-  if (!GMAIL_USER || !GMAIL_PASS) {
-    const error = "Gmail credentials missing - GMAIL_USER and GMAIL_PASS env vars not set. Please add them to environment variables.";
+  if (!SENDGRID_API_KEY) {
+    const error = "SendGrid API key missing - SENDGRID_API_KEY env var not set. Please add it to environment variables.";
     console.error("❌", error);
     throw new Error(error);
   }
 
   try {
-    console.log("📧 Sending OTP email via Gmail to:", email);
+    console.log("📧 Sending OTP email via SendGrid to:", email);
     const startTime = Date.now();
 
-    const mailOptions = {
-      from: FROM_EMAIL,
+    const msg = {
       to: email,
+      from: FROM_EMAIL,
       subject: "Your OTP Code - Admin Login",
       html: otpHtml(otp),
     };
 
-    const result = await transporter.sendMail(mailOptions);
+    const result = await sgMail.send(msg);
     const duration = Date.now() - startTime;
 
-    console.log(`✅ OTP email sent successfully in ${duration}ms. Message ID:`, result.messageId);
-    return { success: true, response: result.messageId };
+    console.log(`✅ OTP email sent successfully in ${duration}ms. Message ID:`, result[0]?.headers?.['x-message-id']);
+    return { success: true, response: result[0]?.headers?.['x-message-id'] };
   } catch (error) {
     console.error("❌ Error sending OTP email:", error.message);
     throw error;
