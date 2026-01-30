@@ -24,6 +24,8 @@ if (!SENDGRID_API_KEY) {
 } else {
   sgMail.setApiKey(SENDGRID_API_KEY);
   console.log("✅ SendGrid configured successfully");
+  console.log("🔍 API key starts with:", SENDGRID_API_KEY.substring(0, 5) + "...");
+  console.log("🔍 API key length:", SENDGRID_API_KEY.length);
 }
 
 export const sendOTPEmail = async (email, otp) => {
