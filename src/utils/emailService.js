@@ -1,7 +1,8 @@
-import { Resend } from "resend";
+import nodemailer from "nodemailer";
 
-const RESEND_API_KEY = process.env.RESEND_API_KEY;
-const FROM_EMAIL = "noreply@digicots.com"; // Resend requires domain email
+const GMAIL_USER = process.env.GMAIL_USER;
+const GMAIL_PASS = process.env.GMAIL_PASS;
+const FROM_EMAIL = process.env.FROM_EMAIL || "noreply@digicots.com";
 
 // Helper to format OTP email body
 const otpHtml = (otp) => `
@@ -18,43 +19,45 @@ const otpHtml = (otp) => `
   </div>
 `;
 
-if (!RESEND_API_KEY) {
-  console.error("❌ Resend API key NOT configured - RESEND_API_KEY is missing");
-  console.log("⚠️  Email service will fail until RESEND_API_KEY is added to environment variables");
+if (!GMAIL_USER || !GMAIL_PASS) {
+  console.error("❌ Gmail credentials NOT configured - GMAIL_USER and GMAIL_PASS are missing");
+  console.log("⚠️  Email service will fail until Gmail credentials are added to environment variables");
 } else {
-  console.log("✅ Resend configured successfully");
+  console.log("✅ Gmail configured successfully");
 }
 
-// Only initialize Resend if API key exists
-const resend = RESEND_API_KEY ? new Resend(RESEND_API_KEY) : null;
+// Create transporter
+const transporter = nodemailer.createTransport({
+  service: 'gmail',
+  auth: {
+    user: GMAIL_USER,
+    pass: GMAIL_PASS
+  }
+});
 
 export const sendOTPEmail = async (email, otp) => {
-  if (!RESEND_API_KEY || !resend) {
-    const error = "Resend API key missing - RESEND_API_KEY env var not set. Please add it to environment variables.";
+  if (!GMAIL_USER || !GMAIL_PASS) {
+    const error = "Gmail credentials missing - GMAIL_USER and GMAIL_PASS env vars not set. Please add them to environment variables.";
     console.error("❌", error);
     throw new Error(error);
   }
 
   try {
-    console.log("📧 Sending OTP email via Resend to:", email);
+    console.log("📧 Sending OTP email via Gmail to:", email);
     const startTime = Date.now();
 
-    const result = await resend.emails.send({
+    const mailOptions = {
       from: FROM_EMAIL,
       to: email,
       subject: "Your OTP Code - Admin Login",
       html: otpHtml(otp),
-    });
+    };
 
+    const result = await transporter.sendMail(mailOptions);
     const duration = Date.now() - startTime;
 
-    if (result.error) {
-      console.error("❌ Resend API error:", result.error);
-      throw new Error(result.error.message);
-    }
-
-    console.log(`✅ OTP email sent successfully in ${duration}ms. Email ID:`, result.data?.id);
-    return { success: true, response: result.data?.id };
+    console.log(`✅ OTP email sent successfully in ${duration}ms. Message ID:`, result.messageId);
+    return { success: true, response: result.messageId };
   } catch (error) {
     console.error("❌ Error sending OTP email:", error.message);
     throw error;
