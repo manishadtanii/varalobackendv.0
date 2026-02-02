@@ -3,6 +3,12 @@ import sgMail from "@sendgrid/mail";
 const SENDGRID_API_KEY = process.env.SENDGRID_API_KEY;
 const FROM_EMAIL = process.env.FROM_EMAIL || "noreply@digicots.com";
 
+// Email validation regex
+const isValidEmail = (email) => {
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  return emailRegex.test(email);
+};
+
 // Helper to format OTP email body
 const otpHtml = (otp) => `
   <div style="font-family: Arial, sans-serif; padding: 20px; background: #f5f5f5; border-radius: 8px;">
@@ -26,12 +32,27 @@ if (!SENDGRID_API_KEY) {
   console.log("✅ SendGrid configured successfully");
   console.log("🔍 API key starts with:", SENDGRID_API_KEY.substring(0, 5) + "...");
   console.log("🔍 API key length:", SENDGRID_API_KEY.length);
+  console.log("📧 FROM_EMAIL:", FROM_EMAIL);
 }
 
 export const sendOTPEmail = async (email, otp) => {
+  // Validate inputs
+  if (!email || !otp) {
+    const error = "❌ Email and OTP are required parameters";
+    console.error(error);
+    throw new Error(error);
+  }
+
+  // Validate email format
+  if (!isValidEmail(email)) {
+    const error = `❌ Invalid email format: "${email}". Please provide a valid email address.`;
+    console.error(error);
+    throw new Error(error);
+  }
+
   if (!SENDGRID_API_KEY) {
-    const error = "SendGrid API key missing - SENDGRID_API_KEY env var not set. Please add it to environment variables.";
-    console.error("❌", error);
+    const error = "❌ SendGrid API key missing - SENDGRID_API_KEY env var not set. Please add it to environment variables.";
+    console.error(error);
     throw new Error(error);
   }
 
@@ -46,6 +67,8 @@ export const sendOTPEmail = async (email, otp) => {
       html: otpHtml(otp),
     };
 
+    console.log("📤 Message object:", { to: email, from: FROM_EMAIL, subject: msg.subject });
+
     const result = await sgMail.send(msg);
     const duration = Date.now() - startTime;
 
@@ -53,6 +76,7 @@ export const sendOTPEmail = async (email, otp) => {
     return { success: true, response: result[0]?.headers?.['x-message-id'] };
   } catch (error) {
     console.error("❌ Error sending OTP email:", error.message);
+    console.error("📋 Full error details:", error);
     throw error;
   }
 };
