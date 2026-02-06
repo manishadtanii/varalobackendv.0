@@ -842,7 +842,7 @@ export const forgotPasswordRequestOTP = async (req, res) => {
     return res.status(200).json({
       message: "OTP sent to your email",
       email: email,
-      otp: otp, // 🔴 FOR TESTING ONLY - Remove in production
+      // otp: otp, // 🔴 FOR TESTING ONLY - Remove in production
     });
   } catch (error) {
     console.error("Forgot Password Request OTP Error:", error);
