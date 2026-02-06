@@ -781,3 +781,316 @@ export const changePassword = async (req, res) => {
     });
   }
 };
+
+// ========== FORGOT PASSWORD FLOW ==========
+
+// Step 1: Request OTP for forgot password (NO JWT NEEDED)
+export const forgotPasswordRequestOTP = async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    // Validate input
+    if (!email) {
+      return res.status(400).json({
+        message: "Email is required",
+      });
+    }
+
+    // Check if user exists and is admin
+    const user = await User.findOne({ email }).select("+otpAttempts");
+
+    if (!user) {
+      return res.status(404).json({
+        message: "Admin email not found",
+      });
+    }
+
+    if (user.role !== "admin") {
+      return res.status(403).json({
+        message: "Access denied. Only admins can reset password",
+      });
+    }
+
+    // Generate 6-digit OTP
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+
+    // Set OTP with 10 minutes expiry
+    user.verificationCode = otp;
+    user.verificationCodeValidation = Date.now() + 10 * 60 * 1000; // 10 min
+    user.otpAttempts = 0; // Reset attempts
+    await user.save();
+
+    // Send OTP via email (async)
+    console.log('📧 Sending Forgot Password OTP to', email);
+    (async () => {
+      try {
+        await sendOTPEmail(email, otp);
+        console.log('✅ Forgot Password OTP sent to', email);
+      } catch (emailError) {
+        console.error('❌ Failed to send Forgot Password OTP:', emailError.message);
+      }
+    })();
+
+    // Set cookie with email (10 min expiry, HttpOnly)
+    res.cookie('forgotPasswordEmail', email, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      maxAge: 10 * 60 * 1000, // 10 minutes
+    });
+
+    return res.status(200).json({
+      message: "OTP sent to your email",
+      email: email,
+      otp: otp, // 🔴 FOR TESTING ONLY - Remove in production
+    });
+  } catch (error) {
+    console.error("Forgot Password Request OTP Error:", error);
+    return res.status(500).json({
+      message: "Server error",
+    });
+  }
+};
+
+// Step 1.5: Resend OTP for forgot password
+export const forgotPasswordResendOTP = async (req, res) => {
+  try {
+    // Get email from cookie OR from request body
+    let email = req.cookies.forgotPasswordEmail || req.body.email;
+
+    if (!email) {
+      return res.status(400).json({
+        message: "Request OTP first",
+      });
+    }
+
+    // Check if user exists and is admin
+    const user = await User.findOne({ email }).select("+otpAttempts");
+
+    if (!user) {
+      return res.status(404).json({
+        message: "Admin email not found",
+      });
+    }
+
+    if (user.role !== "admin") {
+      return res.status(403).json({
+        message: "Access denied. Only admins can reset password",
+      });
+    }
+
+    // Generate 6-digit OTP
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+
+    // Set OTP with 10 minutes expiry
+    user.verificationCode = otp;
+    user.verificationCodeValidation = Date.now() + 10 * 60 * 1000; // 10 min
+    user.otpAttempts = 0; // Reset attempts on resend
+    await user.save();
+
+    // Send OTP via email
+    try {
+      await sendOTPEmail(email, otp);
+    } catch (emailError) {
+      console.error("Failed to send OTP email:", emailError);
+      return res.status(500).json({
+        message: "Failed to send OTP email",
+      });
+    }
+
+    // Update cookie expiry (10 min from now)
+    res.cookie('forgotPasswordEmail', email, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      maxAge: 10 * 60 * 1000, // 10 minutes
+    });
+
+    return res.status(200).json({
+      message: "OTP resent to your email",
+      email: email,
+      otp: otp, // 🔴 FOR TESTING ONLY - Remove in production
+    });
+  } catch (error) {
+    console.error("Forgot Password Resend OTP Error:", error);
+    return res.status(500).json({
+      message: "Server error",
+    });
+  }
+};
+
+// Step 2: Verify OTP for forgot password
+export const forgotPasswordVerifyOTP = async (req, res) => {
+  try {
+    const { email, otp } = req.body;
+
+    // Validate input
+    if (!email || !otp) {
+      return res.status(400).json({
+        message: "Email and OTP are required",
+      });
+    }
+
+    // Find user
+    const user = await User.findOne({ email }).select(
+      "+verificationCode +verificationCodeValidation +otpAttempts +role"
+    );
+
+    if (!user) {
+      return res.status(404).json({
+        message: "User not found",
+      });
+    }
+
+    // Check if OTP exists
+    if (!user.verificationCode) {
+      return res.status(400).json({
+        message: "No OTP found. Request a new one.",
+      });
+    }
+
+    // Check if OTP expired
+    if (Date.now() > user.verificationCodeValidation) {
+      user.verificationCode = undefined;
+      user.verificationCodeValidation = undefined;
+      user.otpAttempts = 0;
+      await user.save();
+      return res.status(400).json({
+        message: "OTP expired. Request a new one.",
+      });
+    }
+
+    // Check attempts
+    if (user.otpAttempts >= 3) {
+      user.verificationCode = undefined;
+      user.verificationCodeValidation = undefined;
+      user.otpAttempts = 0;
+      await user.save();
+      return res.status(403).json({
+        message: "Too many failed attempts. Request a new OTP.",
+      });
+    }
+
+    // Check if OTP matches
+    if (user.verificationCode !== otp) {
+      user.otpAttempts += 1;
+      await user.save();
+      const attemptsLeft = 3 - user.otpAttempts;
+      return res.status(400).json({
+        message: `Invalid OTP. Attempts left: ${attemptsLeft}`,
+      });
+    }
+
+    // OTP Correct - Create reset password token (valid for 15 minutes)
+    const resetPasswordToken = jwt.sign(
+      {
+        id: user._id,
+        email: user.email,
+        purpose: "reset-password",
+      },
+      process.env.JWT_SECRET,
+      { expiresIn: "15m" }
+    );
+
+    // Clear OTP from DB
+    user.verificationCode = undefined;
+    user.verificationCodeValidation = undefined;
+    user.otpAttempts = 0;
+    await user.save();
+
+    return res.status(200).json({
+      message: "OTP verified. You can now reset your password.",
+      resetPasswordToken,
+    });
+  } catch (error) {
+    console.error("Forgot Password Verify OTP Error:", error);
+    return res.status(500).json({
+      message: "Server error",
+    });
+  }
+};
+
+// Step 3: Reset password with new password
+export const forgotPasswordReset = async (req, res) => {
+  try {
+    const { newPassword, confirmPassword } = req.body;
+    const resetPasswordToken = req.headers.authorization?.split(" ")[1];
+
+    // Validate input
+    if (!newPassword || !confirmPassword) {
+      return res.status(400).json({
+        message: "New password and confirm password are required",
+      });
+    }
+
+    if (!resetPasswordToken) {
+      return res.status(401).json({
+        message: "Unauthorized. Complete OTP verification first.",
+      });
+    }
+
+    // Verify token
+    let decoded;
+    try {
+      decoded = jwt.verify(resetPasswordToken, process.env.JWT_SECRET);
+    } catch (err) {
+      return res.status(401).json({
+        message: "Invalid or expired token. Request new OTP.",
+      });
+    }
+
+    // Check purpose
+    if (decoded.purpose !== "reset-password") {
+      return res.status(403).json({
+        message: "Invalid token purpose",
+      });
+    }
+
+    // Validate passwords match
+    if (newPassword !== confirmPassword) {
+      return res.status(400).json({
+        message: "New password and confirm password do not match",
+      });
+    }
+
+    // Validate new password length
+    if (newPassword.length < 6) {
+      return res.status(400).json({
+        message: "New password must be at least 6 characters",
+      });
+    }
+
+    // Find user
+    const user = await User.findById(decoded.id).select("+password");
+
+    if (!user) {
+      return res.status(404).json({
+        message: "User not found",
+      });
+    }
+
+    // Hash new password
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+    // Update password in DB
+    user.password = hashedPassword;
+    await user.save();
+
+    // Clear the cookie
+    res.clearCookie('forgotPasswordEmail');
+
+    return res.status(200).json({
+      message: "Password reset successfully. You can now login.",
+      user: {
+        id: user._id,
+        email: user.email,
+        role: user.role,
+      },
+    });
+  } catch (error) {
+    console.error("Forgot Password Reset Error:", error);
+    return res.status(500).json({
+      message: "Server error",
+    });
+  }
+};
