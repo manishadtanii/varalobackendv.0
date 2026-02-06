@@ -134,7 +134,7 @@ export const resendOTP = async (req, res) => {
     return res.status(200).json({
       message: "OTP resent to your email",
       email: email,
-      otp: otp, // 🔴 FOR TESTING ONLY - Remove in production
+      // otp: otp, // 🔴 FOR TESTING ONLY - Remove in production
     });
   } catch (error) {
     console.error("Resend OTP Error:", error);

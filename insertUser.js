@@ -12,7 +12,7 @@ const insertUser = async () => {
     const hashedPassword = await bcrypt.hash("manish@1234", 10);
 
     const user = await User.create({
-      email: "manish@digicots.com",
+      email: "koulanugreh@gmail.com",
       password: hashedPassword,
       role: "admin",
       verified: true,
