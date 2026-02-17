@@ -1,31 +1,13 @@
 import express from 'express';
-import { requestOTP, verifyOTP, login, resendOTP, requestPasswordChangeOTP, verifyPasswordChangeOTP, changePassword, resendPasswordChangeOTP, forgotPasswordRequestOTP, forgotPasswordResendOTP, forgotPasswordVerifyOTP, forgotPasswordReset } from '../controllers/auth.controller.js';
+import { login, changePassword, forgotPasswordRequestOTP, forgotPasswordResendOTP, forgotPasswordVerifyOTP, forgotPasswordReset } from '../controllers/auth.controller.js';
 const router = express.Router();
 
-// ========== LOGIN FLOW ==========
-// Step 1: Request OTP with email
-router.post('/admin/request-otp', requestOTP);
-
-// Step 1.5: Resend OTP (without email in body)
-router.post('/admin/resend-otp', resendOTP);
-
-// Step 2: Verify OTP
-router.post('/admin/verify-otp', verifyOTP);
-
-// Step 3: Login with password (requires sessionToken from step 2)
+// ========== SIMPLE LOGIN FLOW ==========
+// Direct login with email + password (No OTP)
 router.post('/admin/login', login);
 
-// ========== PASSWORD CHANGE FLOW ==========
-// Step 1: Request OTP for password change (requires logged-in JWT)
-router.post('/admin/request-password-change-otp', requestPasswordChangeOTP);
-
-// Step 1.5: Resend OTP for password change (without email in body)
-router.post('/admin/resend-password-change-otp', resendPasswordChangeOTP);
-
-// Step 2: Verify OTP for password change (requires otpSessionToken)
-router.post('/admin/verify-password-change-otp', verifyPasswordChangeOTP);
-
-// Step 3: Change password (requires changePasswordToken)
+// ========== SIMPLE PASSWORD CHANGE FLOW ==========
+// Direct password change (No OTP - requires JWT)
 router.post('/admin/change-password', changePassword);
 
 // ========== FORGOT PASSWORD FLOW ==========

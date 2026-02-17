@@ -238,11 +238,10 @@ export const verifyOTP = async (req, res) => {
 
 
 
-// Step 3: Login with password - Get final JWT token
+// Step 3: Simple Login - Direct JWT token (No OTP flow)
 export const login = async (req, res) => {  
   try {
     const { email, password } = req.body;
-    const sessionToken = req.headers.authorization?.split(" ")[1]; // Get sessionToken from header
 
     // Validate input
     if (!email || !password) {
@@ -251,31 +250,8 @@ export const login = async (req, res) => {
       });
     }
 
-    if (!sessionToken) {
-      return res.status(401).json({
-        message: "Session expired. Start from email verification.",
-      });
-    }
-
-    // Verify session token
-    let decoded;
-    try {
-      decoded = jwt.verify(sessionToken, process.env.JWT_SECRET);
-    } catch (err) {
-      return res.status(401).json({
-        message: "Invalid or expired session. Start from email verification.",
-      });
-    }
-
-    // Check if email matches
-    if (decoded.email !== email) {
-      return res.status(400).json({
-        message: "Email mismatch. Start from email verification.",
-      });
-    }
-
-    // Find user
-    const user = await User.findById(decoded.id).select("+password +role");
+    // Find user by email
+    const user = await User.findOne({ email }).select("+password +role");
 
     if (!user) {
       return res.status(404).json({
@@ -290,23 +266,16 @@ export const login = async (req, res) => {
       });
     }
 
-    // Check if verified (OTP was done)
-    if (!user.verified) {
-      return res.status(403).json({
-        message: "Account not verified",
-      });
-    }
-
-    // Compare password
+    // Compare password with bcrypt
     const isMatch = await bcrypt.compare(password, user.password);
 
     if (!isMatch) {
       return res.status(401).json({
-        message: "Invalid password",
+        message: "Invalid email or password",
       });
     }
 
-    // Create final JWT token
+    // Create JWT token - Direct access to dashboard
     const token = jwt.sign(
       {
         id: user._id,
@@ -336,357 +305,11 @@ export const login = async (req, res) => {
 };
 
 // ========== PASSWORD CHANGE FLOW ==========
-
-// Step 1: Request OTP for password change (requires logged-in user)
-export const requestPasswordChangeOTP = async (req, res) => {
-  try {
-    const { email } = req.body;
-    const authHeader = req.headers.authorization?.split(" ")[1];
-
-    // Validate JWT token exists
-    if (!authHeader) {
-      return res.status(401).json({
-        message: "Unauthorized. Login required.",
-      });
-    }
-
-    // Verify JWT token
-    let decoded;
-    try {
-      decoded = jwt.verify(authHeader, process.env.JWT_SECRET);
-    } catch (err) {
-      return res.status(401).json({
-        message: "Invalid or expired token",
-      });
-    }
-
-    // Use email from token or body
-    const userEmail = email || decoded.email;
-
-    if (!userEmail) {
-      return res.status(400).json({
-        message: "Email is required",
-      });
-    }
-
-    // Find user
-    const user = await User.findOne({ email: userEmail }).select("+otpAttempts");
-
-    if (!user) {
-      return res.status(404).json({
-        message: "User not found",
-      });
-    }
-
-    // Check if verified
-    if (!user.verified) {
-      return res.status(403).json({
-        message: "Only verified accounts can change password",
-      });
-    }
-
-    // Check if admin
-    if (user.role !== "admin") {
-      return res.status(403).json({
-        message: "Access denied. Only admins can change password",
-      });
-    }
-
-    // Generate 6-digit OTP
-    const otp = Math.floor(100000 + Math.random() * 900000).toString();
-
-    // Save OTP with 10 minutes expiry
-    user.verificationCode = otp;
-    user.verificationCodeValidation = Date.now() + 10 * 60 * 1000;
-    user.otpAttempts = 0;
-    await user.save();
-
-    // Send OTP email
-    try {
-      await sendOTPEmail(userEmail, otp);
-    } catch (emailError) {
-      console.error("Failed to send OTP email:", emailError);
-      return res.status(500).json({
-        message: "Failed to send OTP email",
-      });
-    }
-
-    // Generate OTP session token (valid for 10 minutes, purpose: change-password)
-    const otpSessionToken = jwt.sign(
-      {
-        email: userEmail,
-        purpose: "change-password",
-      },
-      process.env.JWT_SECRET,
-      { expiresIn: "10m" }
-    );
-
-    // Set cookie with email and purpose (10 min expiry, HttpOnly)
-    res.cookie('otpEmail', userEmail, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
-      maxAge: 10 * 60 * 1000, // 10 minutes
-    });
-
-    res.cookie('otpPurpose', 'change-password', {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
-      maxAge: 10 * 60 * 1000, // 10 minutes
-    });
-
-    return res.status(200).json({
-      message: "OTP sent to your email for password change",
-      otpSessionToken,
-    });
-  } catch (error) {
-    console.error("Request Password Change OTP Error:", error);
-    return res.status(500).json({
-      message: "Server error",
-    });
-  }
-};
-
-// Step 2: Verify OTP for password change
-export const verifyPasswordChangeOTP = async (req, res) => {
-  try {
-    const { otp } = req.body;
-    const otpSessionToken = req.headers.authorization?.split(" ")[1];
-
-    // Validate input
-    if (!otp) {
-      return res.status(400).json({
-        message: "OTP is required",
-      });
-    }
-
-    if (!otpSessionToken) {
-      return res.status(401).json({
-        message: "OTP session expired. Request new OTP.",
-      });
-    }
-
-    // Verify OTP session token
-    let decoded;
-    try {
-      decoded = jwt.verify(otpSessionToken, process.env.JWT_SECRET);
-    } catch (err) {
-      return res.status(401).json({
-        message: "Invalid or expired OTP session. Request new OTP.",
-      });
-    }
-
-    // Check purpose
-    if (decoded.purpose !== "change-password") {
-      return res.status(403).json({
-        message: "Invalid token purpose",
-      });
-    }
-
-    // Find user
-    const user = await User.findOne({ email: decoded.email }).select(
-      "+verificationCode +verificationCodeValidation +otpAttempts"
-    );
-
-    if (!user) {
-      return res.status(404).json({
-        message: "User not found",
-      });
-    }
-
-    // Check if OTP exists
-    if (!user.verificationCode) {
-      return res.status(400).json({
-        message: "No OTP found. Request a new one.",
-      });
-    }
-
-    // Check if OTP expired
-    if (Date.now() > user.verificationCodeValidation) {
-      user.verificationCode = undefined;
-      user.verificationCodeValidation = undefined;
-      user.otpAttempts = 0;
-      await user.save();
-      return res.status(400).json({
-        message: "OTP expired. Request new one.",
-      });
-    }
-
-    // Check attempts
-    if (user.otpAttempts >= 3) {
-      user.verificationCode = undefined;
-      user.verificationCodeValidation = undefined;
-      user.otpAttempts = 0;
-      await user.save();
-      return res.status(403).json({
-        message: "Too many failed attempts. Request new OTP.",
-      });
-    }
-
-    // Verify OTP
-    if (user.verificationCode !== otp) {
-      user.otpAttempts += 1;
-      await user.save();
-      const attemptsLeft = 3 - user.otpAttempts;
-      return res.status(400).json({
-        message: `Invalid OTP. Attempts left: ${attemptsLeft}`,
-      });
-    }
-
-    // OTP verified - Create change password token (valid for 15 minutes)
-    const changePasswordToken = jwt.sign(
-      {
-        id: user._id,
-        email: user.email,
-        purpose: "change-password",
-      },
-      process.env.JWT_SECRET,
-      { expiresIn: "15m" }
-    );
-
-    // Clear OTP from DB
-    user.verified = true; 
-    user.verificationCode = undefined;
-    user.verificationCodeValidation = undefined;
-    user.otpAttempts = 0;
-    await user.save();
-
-    return res.status(200).json({
-      message: "OTP verified. Proceed to change password.",
-      changePasswordToken,
-    });
-  } catch (error) {
-    console.error("Verify Password Change OTP Error:", error);
-    return res.status(500).json({
-      message: "Server error",
-    });
-  }
-};
-
-// Step 2.5: Resend OTP for password change (without email in body)
-export const resendPasswordChangeOTP = async (req, res) => {
-  try {
-    // Get email from cookie
-    const email = req.cookies.otpEmail;
-    const otpPurpose = req.cookies.otpPurpose;
-    const otpSessionToken = req.headers.authorization?.split(" ")[1];
-
-    // Validate cookies
-    if (!email || otpPurpose !== 'change-password') {
-      return res.status(400).json({
-        message: "Request OTP first for password change",
-      });
-    }
-
-    // Validate token
-    if (!otpSessionToken) {
-      return res.status(401).json({
-        message: "OTP session expired. Request new OTP.",
-      });
-    }
-
-    let decoded;
-    try {
-      decoded = jwt.verify(otpSessionToken, process.env.JWT_SECRET);
-    } catch (err) {
-      return res.status(401).json({
-        message: "Invalid or expired OTP session. Request new OTP.",
-      });
-    }
-
-    // Check purpose
-    if (decoded.purpose !== "change-password") {
-      return res.status(403).json({
-        message: "Invalid token purpose",
-      });
-    }
-
-    // Find user
-    const user = await User.findOne({ email }).select("+otpAttempts");
-
-    if (!user) {
-      return res.status(404).json({
-        message: "User not found",
-      });
-    }
-
-    // Check if verified
-    if (!user.verified) {
-      return res.status(403).json({
-        message: "Only verified accounts can change password",
-      });
-    }
-
-    // Check if admin
-    if (user.role !== "admin") {
-      return res.status(403).json({
-        message: "Access denied. Only admins can change password",
-      });
-    }
-
-    // Generate 6-digit OTP
-    const otp = Math.floor(100000 + Math.random() * 900000).toString();
-
-    // Save OTP with 10 minutes expiry
-    user.verificationCode = otp;
-    user.verificationCodeValidation = Date.now() + 10 * 60 * 1000;
-    user.otpAttempts = 0; // Reset attempts on resend
-    await user.save();
-
-    // Send OTP email
-    try {
-      await sendOTPEmail(email, otp);
-    } catch (emailError) {
-      console.error("Failed to send OTP email:", emailError);
-      return res.status(500).json({
-        message: "Failed to send OTP email",
-      });
-    }
-
-    // Update cookies expiry (10 min from now)
-   res.cookie('otpEmail', email, {
-  httpOnly: true,
-  secure: true,        // prod me always true
-  sameSite: 'none',    // 🔥 VERY IMPORTANT
-  maxAge: 10 * 60 * 1000,
-});
-
-
-    res.cookie('otpPurpose', 'change-password', {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
-      maxAge: 10 * 60 * 1000, // 10 minutes
-    });
-
-    // Generate new OTP session token (valid for 10 minutes)
-    const newOtpSessionToken = jwt.sign(
-      {
-        email: email,
-        purpose: "change-password",
-      },
-      process.env.JWT_SECRET,
-      { expiresIn: "10m" }
-    );
-
-    return res.status(200).json({
-      message: "OTP resent to your email",
-      otpSessionToken: newOtpSessionToken,
-    });
-  } catch (error) {
-    console.error("Resend Password Change OTP Error:", error);
-    return res.status(500).json({
-      message: "Server error",
-    });
-  }
-};
-
-// Step 3: Change password
+// Direct Change Password (No OTP - Simple!)
 export const changePassword = async (req, res) => {
   try {
     const { oldPassword, newPassword, confirmPassword } = req.body;
-    const changePasswordToken = req.headers.authorization?.split(" ")[1];
+    const token = req.headers.authorization?.split(" ")[1]; // JWT token
 
     // Validate input
     if (!oldPassword || !newPassword || !confirmPassword) {
@@ -695,26 +318,19 @@ export const changePassword = async (req, res) => {
       });
     }
 
-    if (!changePasswordToken) {
+    if (!token) {
       return res.status(401).json({
-        message: "Unauthorized. Complete OTP verification first.",
+        message: "Unauthorized. Please login first.",
       });
     }
 
-    // Verify token
+    // Verify JWT token
     let decoded;
     try {
-      decoded = jwt.verify(changePasswordToken, process.env.JWT_SECRET);
+      decoded = jwt.verify(token, process.env.JWT_SECRET);
     } catch (err) {
       return res.status(401).json({
-        message: "Invalid or expired token. Request new OTP.",
-      });
-    }
-
-    // Check purpose
-    if (decoded.purpose !== "change-password") {
-      return res.status(403).json({
-        message: "Invalid token purpose",
+        message: "Invalid or expired token. Please login again.",
       });
     }
 
@@ -732,7 +348,7 @@ export const changePassword = async (req, res) => {
       });
     }
 
-    // Find user
+    // Find user by ID from JWT
     const user = await User.findById(decoded.id).select("+password");
 
     if (!user) {
@@ -741,16 +357,16 @@ export const changePassword = async (req, res) => {
       });
     }
 
-    // Verify old password
+    // Verify old password (bcrypt compare)
     const isOldPasswordMatch = await bcrypt.compare(oldPassword, user.password);
 
     if (!isOldPasswordMatch) {
-      return res.status(400).json({
+      return res.status(401).json({
         message: "Old password is incorrect",
       });
     }
 
-    // Check if new password is same as old (optional but good practice)
+    // Check if new password is same as old
     const isSamePassword = await bcrypt.compare(newPassword, user.password);
 
     if (isSamePassword) {
